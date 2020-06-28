@@ -32,11 +32,16 @@ kubectl config set-context --current --namespace=oklimenko-loadtest
 
 3. Для мониторинга - развернем Prometheus и nginx в отдельнмо namespace
 
-kubectl create namespace oklimenko-monitoring
-helm install prom stable/prometheus-operator -f monitoring/prometheus.yaml -n oklimenko-monitoring
+kubectl create namespace monitoring
+helm install prom stable/prometheus-operator -f monitoring/prometheus.yaml -n monitoring
+Проверить статус установки:
+kubectl --namespace monitoring get pods -l "release=prom"
+The default user/password for grafana is: user: admin password: prom-operator
 
-kubectl create namespace oklimenko-ingress
+kubectl create namespace ingress
 helm install ing stable/nginx-ingress -f ingress/nginx-ingress.yaml -n ingress
+
+
 
 4. Grafana
 
