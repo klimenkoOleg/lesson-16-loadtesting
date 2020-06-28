@@ -1,0 +1,1 @@
+helm install myapp ./products-chart --atomic

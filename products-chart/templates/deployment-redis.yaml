@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "products-chart.fullname" . }}-redis
+  labels:
+    {{- include "products-chart.labels" . | nindent 4 }}
+spec:
+  strategy:
+    type: RollingUpdate
+{{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+{{- end }}
+  selector:
+    matchLabels:
+      {{- include "products-chart.selectorLabels" . | nindent 6 }}-redis
+  template:
+    metadata:
+      labels:
+        {{- include "products-chart.selectorLabels" . | nindent 8 }}-redis
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image_redis.repository }}:{{ .Values.image_redis.tag | default .Chart.AppVersion }}"
+          command:
+            - redis-server
+            - "/redis-master/redis.conf"
+          env:
+            - name: GREETING
+              valueFrom:
+                configMapKeyRef:
+                  name: products-config
+                  key: GREETING
+          ports:
+            - name: http-redis
+              containerPort: 6379
+              protocol: TCP
+          volumeMounts:
+  #          - mountPath: /redis-master-data
+  #            name: data
+            - mountPath: /redis-master
+              name: config
+          #          livenessProbe:
+          #            httpGet:
+          #              port: 8080
+          #              path: /health
+          #            initialDelaySeconds: 15
+          #            periodSeconds: 5
+          #            timeoutSeconds: 2
+          #          readinessProbe:
+          #            httpGet:
+          #              port: 8080
+          #              path: /health
+          #            initialDelaySeconds: 15
+          #            periodSeconds: 5
+      volumes:
+#        - name: data
+#          emptyDir: {}
+        - name: config
+          configMap:
+            name: products-config
+            items:
+              - key: redis_config
+                path: redis.conf

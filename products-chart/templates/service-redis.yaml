@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "products-chart.fullname" . }}-redis
+  labels:
+    {{- include "products-chart.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: 6379
+      targetPort: http-redis
+      protocol: TCP
+      name: web-redis
+  selector:
+    {{- include "products-chart.selectorLabels" . | nindent 4 }}-redis

@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "products-chart.fullname" . }}-products-app
+  labels:
+    {{- include "products-chart.labels" . | nindent 4 }}
+spec:
+  strategy:
+    type: RollingUpdate
+{{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+{{- end }}
+  selector:
+    matchLabels:
+      {{- include "products-chart.selectorLabels" . | nindent 6 }}-products-app
+  template:
+    metadata:
+      labels:
+        {{- include "products-chart.selectorLabels" . | nindent 8 }}-products-app
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
+    spec:
+      initContainers:
+        - name: check-db-ready
+          image: postgres:9.6.5
+          command:
+            - sh
+            - "-c"
+            - |
+              until pg_isready -h myapp-postgresql -p 5432;
+              do echo waiting for database; sleep 2; done;
+              {{ printf "psql postgres://%s:%s@%s/%s" .Values.externalPostgresql.postgresqlUsername .Values.externalPostgresql.postgresqlPassword (include "postgresql.fullname" .) .Values.externalPostgresql.postgresqlDatabase }} <<'EOF'
+
+                create schema oklimenko_products;
+
+              EOF
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image_products_app.repository }}:{{ .Values.image_products_app.tag | default .Chart.AppVersion }}"
+          env:
+            - name: DATABASE_URI
+              valueFrom:
+                secretKeyRef:
+                  name: products-secret
+                  key: DATABASE_URI
+
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: products-secret
+                  key: DATABASE_USER
+
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: products-secret
+                  key: DATABASE_PASSWORD
+
+            - name: CACHE_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: products-config
+                  key: CACHE_ENABLED
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: products-config
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: products-config
+                  key: REDIS_PORT
+          ports:
+            - name: http-products
+              containerPort: 8000
+              protocol: TCP
+#          livenessProbe:
+#            httpGet:
+#              port: 8081
+#              path: /health
+#            initialDelaySeconds: 15
+#            periodSeconds: 5
+#            timeoutSeconds: 2
+#          readinessProbe:
+#            httpGet:
+#              port: 8081
+#              path: /health
+#            initialDelaySeconds: 15
+#            periodSeconds: 5

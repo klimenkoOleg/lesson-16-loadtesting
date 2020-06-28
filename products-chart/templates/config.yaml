@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: products-config
+data:
+  GREETING: Bonjour
+  CACHE_ENABLED: "1"
+#  DATABASE_URI: jdbc:postgresql://localhost:5432/postgres?currentSchema=products
+#  DATABASE_PASSWORD: postgres
+  REDIS_HOST: myapp-cache-chart-redis
+  REDIS_PORT: "6379"
+  redis_config: |+
+    maxmemory 2mb
+    maxmemory-policy allkeys-lru
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: products-secret
+type: Opaque
+data:
+  DATABASE_PASSWORD: {{ printf "%s" .Values.externalPostgresql.postgresqlPassword | b64enc }}
+#  DATABASE_PASSWORD: cGFzc3dk
+  DATABASE_USER: {{ printf "%s" .Values.externalPostgresql.postgresqlUsername | b64enc }}
+#  DATABASE_USER: bXl1c2Vy
+  DATABASE_URI: {{ printf "jdbc:postgresql://%s:%s/%s?currentSchema=%s" (include "postgresql.fullname" .) .Values.postgresql.service.port .Values.externalPostgresql.postgresqlDatabase .Values.externalPostgresql.postgresqlSchema  | b64enc | quote }}

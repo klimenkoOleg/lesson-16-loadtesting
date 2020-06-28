@@ -1,0 +1,6 @@
+psql -U myuser postgresql://localhost:5432/myapp
+passwd
+
+
+\dt
+
