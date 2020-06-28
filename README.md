@@ -7,54 +7,53 @@ Application uses read through cache:
 
 
 
-# Installation
+# Установка и настройка
 
-1. Use any namespace, for example products-namespace:
-kubectl create namespace products-namespace
-kubectl config use-context products-namespace
+1. Создаем namespace для приложения:<br>
+    kubectl create namespace products-namespace
+    kubectl config use-context products-namespace
 
-2. Use install.sh to install application to Kubernetes (uses Helm charts)
+2. Для установки приложения через Helm chary запускаем install.sh  <br>
+    *  Используйте uninstall.sh для удаления приложения из Kubernetes.
 
-3. Use uninstall.sh to uninstall the app from Kubernetes.
+3. Создать namespace для продуктового приложения<br>
+    kubectl create namespace oklimenko-loadtest<br>
+    kubectl config set-context --current --namespace=oklimenko-loadtest
 
-# Load testing
+4. Запустиь install.sh  из корня репозитория<br>Используя Helm чарты сделает следующее:
+    * создаст приложение
+    * установит Redis
+    * установит PostgreSQL
+    * зальет тестовые данные - 100к строк
+    
+5. Для мониторинга - развернем Prometheus и nginx в отдельнмо namespace
 
-1. Создать namespace для продуктового приложения
-kubectl create namespace oklimenko-loadtest
-kubectl config set-context --current --namespace=oklimenko-loadtest
+    kubectl create namespace monitoring<br>
+    helm install prom stable/prometheus-operator -f monitoring/prometheus.yaml -n monitoring<br>
+    
+    Проверить статус установки:<br>
+    kubectl --namespace monitoring get pods -l "release=prom"<br>
+    
+    Hint: default user/password for grafana is: user: admin password: prom-operator<br>
 
-2. Запустиь install.sh  из корня репозитория
-Используя Helm чарты сделает следующее:
-* создаст приложение
-* установит Redis
-* установит PostgreSQL
-* зальет тестовые данные - 100к строк
+6. Развернем Ingress<br>
+    kubectl create namespace ingress<br>
+    helm install ing stable/nginx-ingress -f ingress/nginx-ingress.yaml -n ingress
 
-3. Для мониторинга - развернем Prometheus и nginx в отдельнмо namespace
+7. Grafana
+    Запускаем графану и импортируем в нее дашборд с основными графиками:
+    kubectl port-forward -n monitoring service/prom-grafana 9000:80
 
-kubectl create namespace oklimenko-monitoring
-helm install prom stable/prometheus-operator -f monitoring/prometheus.yaml -n oklimenko-monitoring
+8. Locust
+    Устанавливаем locust:
 
-kubectl create namespace oklimenko-ingress
-helm install ing stable/nginx-ingress -f ingress/nginx-ingress.yaml -n ingress
+    pip install locust
 
-4. Grafana
+9. Нагрузка и графики
 
-Запускаем графану и импортируем в нее дашборд с основными графиками
-
-kubectl port-forward -n monitoring service/prom-grafana 9000:80
-
-
-5. locust
-
-Устанавливаем locust
-
-pip install locust
-
-
-6. Нагрузка и графики
-
-locust -f locustfile.py --headless -u 100000 -r 10 --run-time 10m --host http://arch.homework --step-load --step-users 25 --step-time 15s
+    Выполняем нагрузку (запуск из корня репо):
+    
+    locust -f locustfile.py --headless -u 100000 -r 10 --run-time 10m --host http://arch.homework --step-load --step-users 25 --step-time 15s
 
 
 
